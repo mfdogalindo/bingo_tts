@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Bingo Moderno Panorámico</title>
+      <link rel="stylesheet" href="style.css" />
+   </head>
+   <body>
+      <div class="bingo-panoramico">
+         <div class="panel-izquierdo">
+            <header>
+               <h1>Bingo!</h1>
+               <div class="voice-selector-container">
+                  <label for="selector-voz">Voz:</label>
+                  <select id="selector-voz"></select>
+               </div>
+            </header>
+            <div id="numero-actual-container">
+               <p>Último Número</p>
+               <div id="numero-actual" class="numero-display">-</div>
+            </div>
+            <footer>
+               <button id="llamar-numero-btn">Llamar Número</button>
+            </footer>
+         </div>
+
+         <div class="panel-derecho">
+            <main>
+               <div id="tablero-completo">
+                  <div class="letra-columna">B</div>
+                  <div class="letra-columna">I</div>
+                  <div class="letra-columna">N</div>
+                  <div class="letra-columna">G</div>
+                  <div class="letra-columna">O</div>
+                  <div id="tablero-control"></div>
+               </div>
+            </main>
+         </div>
+      </div>
+
+      <script src="app.js"></script>
+   </body>
+</html>
