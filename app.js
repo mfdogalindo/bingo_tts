@@ -104,16 +104,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	// MAPA 2: Chistes por terminación, con más sabor colombiano
 	const chistesPorTerminacion = {
-		1: "¡Termina en uno, como el puesto de la Selección!",
-		2: "¡Termina en dos, ¡para que bailemos los dos!",
-		3: "¡Termina en tres, ¡hágale pues, que no es pa' después!",
-		4: "¡Termina en cuatro, ¡más colombiano que un sombrero vueltiao!",
-		5: "¡Termina en cinco, ¡brinca más que un hincha en el Metropolitano!",
-		6: "¡Termina en seis, ¡como un 'seis' de Poker bien helado!",
-		7: "¡Termina en siete, ¡pa' que se anime y apriete!",
-		8: "¡Termina en ocho, ¡más bueno que un bizcocho de achira!",
-		9: "¡Termina en nueve, ¡que la suerte se le mueva!",
-		0: "¡Termina en cero, ¡más bacano que empezar el año con un festivo!",
+1: "Termina en UNO... ¡Hágale UNO, pues! ¡Que el que piensa pierde!",
+        2: "Termina en DOS... ¡No se me duerma que le cantan el adiós!",
+        3: "Termina en TRES... ¡Revíselo otra vez, no me vaya a dar estrés!",
+        4: "Termina en CUATRO... ¡Márquelo rápido o le da un calambre en el zapato!",
+        5: "Termina en CINCO... ¡El que no lo marque, que pague el sancocho del domingo!",
+        6: "Termina en SEIS... ¡Como lo veis, la suerte está a tus pies!",
+        7: "Termina en SIETE... ¡Siete vidas tiene el gato y a usted le queda esta para ganar!",
+        8: "Termina en OCHO... ¡Ojo con el bizcocho, que no se le queme por estar mirando!",
+        9: "Termina en NUEVE... ¡Que la fortuna se le mueva y la platica le llueva!",
+        0: "Termina en CERO... ¡Póngale un CERO a la mala suerte, que llegó el aguacero de la fortuna!",
 	};
 	
 	// MAPA 3: Dichos populares, frases genéricas y disculpas
