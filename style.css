@@ -180,6 +180,37 @@ body {
     gap: 1.5rem;
 }
 
+.controles-principales {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+#autoplay-btn {
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+#autoplay-btn:hover {
+    background-color: #27ae60;
+    transform: translateY(-2px);
+}
+
+#autoplay-btn.autoplaying {
+    background-color: #e74c3c;
+}
+
+#autoplay-btn.autoplaying:hover {
+    background-color: #c0392b;
+}
+
 .controles-adicionales {
     display: flex;
     flex-direction: column;
