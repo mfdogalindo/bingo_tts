@@ -21,7 +21,38 @@
                <div id="numero-actual" class="numero-display">-</div>
             </div>
             <footer>
-               <button id="llamar-numero-btn">Llamar Número</button>
+                <div class="controles-principales">
+                    <button id="llamar-numero-btn">Llamar Número</button>
+                    <button id="autoplay-btn">Juego Automático</button>
+                </div>
+                <div class="controles-adicionales">
+                    <div class="grupo-botones">
+                        <button id="contar-btn">Recuento</button>
+                        <button id="reiniciar-btn">Reiniciar</button>
+                    </div>
+                    <div class="grupo-controles">
+                        <div class="switch-container">
+                            <label for="chistes-switch">Chistes</label>
+                            <label class="switch">
+                                <input type="checkbox" id="chistes-switch" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="modo-juego-container">
+                            <label for="modo-juego">Modo de Juego:</label>
+                            <select id="modo-juego">
+                                <option value="completo">Tabla Completa</option>
+                                <option value="B">Solo B</option>
+                                <option value="I">Solo I</option>
+                                <option value="N">Solo N</option>
+                                <option value="G">Solo G</option>
+                                <option value="O">Solo O</option>
+                                <option value="esquinas">Cuatro Esquinas (B, O)</option>
+                                <option value="X">En X (B, I, G, O)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </footer>
          </div>
 
