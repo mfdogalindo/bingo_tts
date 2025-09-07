@@ -4,6 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
 	const numeroActualDisplay = document.getElementById("numero-actual");
 	const llamarNumeroBtn = document.getElementById("llamar-numero-btn");
 	const selectorVoz = document.getElementById("selector-voz");
+	const reiniciarBtn = document.getElementById("reiniciar-btn");
+	const restaurarBtn = document.getElementById("restaurar-btn");
+	const contarBtn = document.getElementById("contar-btn");
+	const chistesSwitch = document.getElementById("chistes-switch");
+	const modoJuegoSelect = document.getElementById("modo-juego");
+
+	let chistesHabilitados = true;
 
 	const BINGO_MAP = {
 		B: { min: 1, max: 15 },
@@ -18,7 +25,9 @@ document.addEventListener("DOMContentLoaded", () => {
 	};
 
 	let numerosDisponibles = [];
+	let numerosSalidos = [];
 	let vocesDisponibles = [];
+	let jokeTimeout; // Para controlar el chiste retardado
 
 	// --- INICIO DE MEJORAS ---
 
@@ -187,10 +196,8 @@ document.addEventListener("DOMContentLoaded", () => {
 	window.speechSynthesis.onvoiceschanged = cargarVoces;
 
 	// Función para leer en voz alta con interrupción y tiempo aleatorio
-	function leerNumeroEnVozAlta(texto, esAnuncioPrincipal = false) {
+	function leerEnVozAlta(texto) {
 		if ("speechSynthesis" in window) {
-			window.speechSynthesis.cancel();
-
 			const utterance = new SpeechSynthesisUtterance(texto);
 			const nombreVozSeleccionada =
 				selectorVoz.selectedOptions[0]?.getAttribute("data-name");
@@ -202,20 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				utterance.voice = vozSeleccionada;
 			}
 			utterance.rate = 0.9;
-
 			window.speechSynthesis.speak(utterance);
-
-			if (esAnuncioPrincipal) {
-				const tiempoRepeticionAleatorio = Math.random() * (4000 - 2000) + 1000;
-				setTimeout(() => {
-					const utteranceRepeticion = new SpeechSynthesisUtterance(texto);
-					if (vozSeleccionada) {
-						utteranceRepeticion.voice = vozSeleccionada;
-					}
-					utteranceRepeticion.rate = 0.9;
-					window.speechSynthesis.speak(utteranceRepeticion);
-				}, tiempoRepeticionAleatorio);
-			}
 		}
 	}
 
@@ -227,73 +221,218 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	}
 
-	function inicializarJuego() {
+	function inicializarJuego(forzarReinicio = false) {
+		if (!forzarReinicio && localStorage.getItem("estadoBingo")) {
+			restaurarBtn.style.display = "inline-block";
+			return;
+		}
+
+		localStorage.removeItem("estadoBingo");
 		cargarVoces();
 		tableroControl.innerHTML = "";
 		numerosDisponibles = [];
+		numerosSalidos = [];
+
+		const modo = modoJuegoSelect.value;
+		const letrasActivas = new Set();
+
+		switch (modo) {
+			case "completo":
+				Object.keys(BINGO_MAP).forEach(l => letrasActivas.add(l));
+				break;
+			case "esquinas":
+				letrasActivas.add("B").add("O");
+				break;
+			case "X":
+				letrasActivas.add("B").add("I").add("G").add("O");
+				break;
+			default:
+				letrasActivas.add(modo); // Para B, I, N, G, O
+		}
 
 		const columnas = { B: [], I: [], N: [], G: [], O: [] };
 		for (let i = 1; i <= 75; i++) {
-			numerosDisponibles.push(i);
 			const letra = getLetra(i);
+			if (letrasActivas.has(letra)) {
+				numerosDisponibles.push(i);
+			}
 			const numeroDiv = document.createElement("div");
 			numeroDiv.classList.add("numero-tablero");
+			if (!letrasActivas.has(letra)) {
+				numeroDiv.classList.add("inactivo");
+			}
 			numeroDiv.id = `numero-${i}`;
 			numeroDiv.textContent = i;
 			columnas[letra].push(numeroDiv);
 		}
+
 		for (let i = 0; i < 15; i++) {
 			["B", "I", "N", "G", "O"].forEach((letra) =>
 				tableroControl.appendChild(columnas[letra][i])
 			);
 		}
+
 		numeroActualDisplay.textContent = "-";
 		llamarNumeroBtn.disabled = false;
+		restaurarBtn.style.display = "none";
 	}
 
 	function llamarNumero() {
+		// --- INICIO DE LA SOLUCIÓN DEL BUG ---
+		window.speechSynthesis.cancel();
+		clearTimeout(jokeTimeout);
+		// --- FIN DE LA SOLUCIÓN DEL BUG ---
+
 		if (numerosDisponibles.length === 0) {
 			const mensajeFinal = "¡Bingo! Han salido todos los números. ¡Gracias por jugar!";
 			alert(mensajeFinal);
-			leerNumeroEnVozAlta(mensajeFinal);
+			leerEnVozAlta(mensajeFinal);
 			llamarNumeroBtn.disabled = true;
 			return;
 		}
+
 		const indiceAleatorio = Math.floor(
 			Math.random() * numerosDisponibles.length
 		);
 		const numeroNuevo = numerosDisponibles.splice(indiceAleatorio, 1)[0];
+
+		numerosSalidos.push(numeroNuevo);
+		guardarEstado(); // Guardar estado después de cada número
+
 		actualizarUI(numeroNuevo);
 	}
 
-	function actualizarUI(numero) {
+	function actualizarUI(numero, restaurando = false) {
 		const letra = getLetra(numero);
 		const textoParaMostrar = `${letra}-${numero}`;
-		const letraParaLeer = phoneticMap[letra] || letra;
-		const textoParaLeer = `${letraParaLeer}, ${numero}`;
-		const mensajeDivertido = obtenerMensajeAleatorio(numero);
 
-		numeroActualDisplay.textContent = textoParaMostrar;
-		numeroActualDisplay.classList.add("animar");
-
-		leerNumeroEnVozAlta(textoParaLeer, true);
-
-		setTimeout(() => {
-			leerNumeroEnVozAlta(mensajeDivertido);
-		}, 4000);
-
-		setTimeout(() => {
-			numeroActualDisplay.classList.remove("animar");
-		}, 500);
-
+		// Marcar el número en el tablero
 		const numeroEnTablero = document.getElementById(`numero-${numero}`);
 		if (numeroEnTablero) {
 			numeroEnTablero.classList.add("salido");
 		}
+
+		// Solo realizar acciones de UI y voz si no se está restaurando en silencio
+		if (!restaurando) {
+			const letraParaLeer = phoneticMap[letra] || letra;
+			const textoParaLeer = `${letraParaLeer}, ${numero}`;
+			const mensajeDivertido = obtenerMensajeAleatorio(numero);
+
+			numeroActualDisplay.textContent = textoParaMostrar;
+			numeroActualDisplay.classList.add("animar");
+
+			// Leer el número principal
+			leerEnVozAlta(textoParaLeer);
+
+			// Repetir el número principal después de un momento
+			setTimeout(() => leerEnVozAlta(textoParaLeer), 2500);
+
+			// Programar el chiste y guardar su ID si están habilitados
+			if (chistesHabilitados) {
+				jokeTimeout = setTimeout(() => {
+					leerEnVozAlta(mensajeDivertido);
+				}, 5000);
+			}
+
+			setTimeout(() => {
+				numeroActualDisplay.classList.remove("animar");
+			}, 500);
+		}
 	}
 
+	// --- Funciones de Estado y Botones Adicionales ---
+
+	function guardarEstado() {
+		const estado = {
+			numerosDisponibles,
+			numerosSalidos,
+			ultimoNumero: numerosSalidos[numerosSalidos.length - 1] || "-",
+		};
+		localStorage.setItem("estadoBingo", JSON.stringify(estado));
+	}
+
+	function restaurarEstado() {
+		const estadoGuardado = localStorage.getItem("estadoBingo");
+		if (estadoGuardado) {
+			const estado = JSON.parse(estadoGuardado);
+			numerosDisponibles = estado.numerosDisponibles;
+			numerosSalidos = estado.numerosSalidos;
+
+			// Actualizar el tablero visualmente sin leer en voz alta
+			numerosSalidos.forEach((num) => actualizarUI(num, true));
+
+			// Actualizar el último número mostrado
+			const ultimoNumero = estado.ultimoNumero;
+			if (ultimoNumero !== "-") {
+				numeroActualDisplay.textContent = `${getLetra(ultimoNumero)}-${ultimoNumero}`;
+			} else {
+				numeroActualDisplay.textContent = "-";
+			}
+
+			alert("¡Estado anterior restaurado!");
+			return true; // Indica que se restauró un estado
+		}
+		return false; // No había estado que restaurar
+	}
+
+	function reiniciarJuego() {
+		if (confirm("¿Estás seguro de que quieres reiniciar la partida? Se borrará el progreso guardado.")) {
+			localStorage.removeItem("estadoBingo");
+			numerosSalidos = [];
+			numeroActualDisplay.textContent = "-";
+			// Reinicializa el juego desde cero
+			inicializarJuego(true);
+		}
+	}
+
+	function contarNumerosSalidos() {
+		if (numerosSalidos.length === 0) {
+			leerEnVozAlta("Aún no ha salido ningún número.");
+			return;
+		}
+
+		const numerosPorLetra = { B: [], I: [], N: [], G: [], O: [] };
+		numerosSalidos.forEach(num => {
+			const letra = getLetra(num);
+			numerosPorLetra[letra].push(num);
+		});
+
+		let textoRecuento = "Los números que han salido son: ";
+		for (const letra in numerosPorLetra) {
+			if (numerosPorLetra[letra].length > 0) {
+				textoRecuento += ` Por la ${phoneticMap[letra] || letra}: ${numerosPorLetra[letra].join(", ")}. `;
+			}
+		}
+
+		window.speechSynthesis.cancel();
+		leerEnVozAlta(textoRecuento);
+	}
+
+
 	llamarNumeroBtn.addEventListener("click", llamarNumero);
+	reiniciarBtn.addEventListener("click", reiniciarJuego);
+	restaurarBtn.addEventListener("click", () => {
+		inicializarJuego(); // Prepara el tablero
+		restaurarEstado();  // Aplica el estado guardado
+	});
+	contarBtn.addEventListener("click", contarNumerosSalidos);
+
+	chistesSwitch.addEventListener("change", () => {
+		chistesHabilitados = chistesSwitch.checked;
+	});
+
+	modoJuegoSelect.addEventListener("change", () => {
+		if (confirm("Cambiar el modo de juego reiniciará la partida actual. ¿Continuar?")) {
+			inicializarJuego(true);
+		} else {
+			// TODO: Revertir la selección visualmente si el usuario cancela
+		}
+	});
+
+
+	// Inicializar el juego al cargar la página
 	inicializarJuego();
+
 
 	document.addEventListener("keydown", (event) => {
 		if (event.code === "Space") {
