@@ -52,6 +52,7 @@ export default function BingoGame() {
     const [vozSeleccionada, setVozSeleccionada] = useState('');
     const [todosLosChistes, setTodosLosChistes] = useState([]);
     const [showSettings, setShowSettings] = useState(false);
+    const [showBoard, setShowBoard] = useState(false); // Mobile board toggle
 
     // Refs for accessing latest state in callbacks/timeouts
     const autoplayTimeoutRef = useRef(null);
@@ -90,6 +91,31 @@ export default function BingoGame() {
         cargarChistes();
     }, []);
 
+    // Cargar configuraciones guardadas
+    useEffect(() => {
+        const savedSettings = localStorage.getItem('bingoSettings');
+        if (savedSettings) {
+            try {
+                const parsed = JSON.parse(savedSettings);
+                if (parsed.vozSeleccionada) setVozSeleccionada(parsed.vozSeleccionada);
+                if (parsed.modoJuego) setModoJuego(parsed.modoJuego);
+                if (parsed.chistesHabilitados !== undefined) setChistesHabilitados(parsed.chistesHabilitados);
+            } catch (e) {
+                console.error("Error loading settings", e);
+            }
+        }
+    }, []);
+
+    // Guardar configuraciones cuando cambian
+    useEffect(() => {
+        const settings = {
+            vozSeleccionada,
+            modoJuego,
+            chistesHabilitados
+        };
+        localStorage.setItem('bingoSettings', JSON.stringify(settings));
+    }, [vozSeleccionada, modoJuego, chistesHabilitados]);
+
     // Cargar voces
     useEffect(() => {
         const cargarVoces = () => {
@@ -97,12 +123,22 @@ export default function BingoGame() {
             const vocesEspañol = voces.filter(voz => voz.lang.startsWith('es'));
             setVocesDisponibles(vocesEspañol);
 
-            const vozGuardada = localStorage.getItem('vozBingoSeleccionada');
-            if (vozGuardada && vocesEspañol.find(v => v.name === vozGuardada)) {
-                setVozSeleccionada(vozGuardada);
-            } else if (vocesEspañol.length > 0) {
-                setVozSeleccionada(vocesEspañol[0].name);
-            }
+            // Si no hay voz seleccionada, intentar usar la guardada en settings o la primera disponible
+            setVozSeleccionada(prev => {
+                if (prev && vocesEspañol.find(v => v.name === prev)) return prev;
+
+                const savedSettings = localStorage.getItem('bingoSettings');
+                if (savedSettings) {
+                    try {
+                         const parsed = JSON.parse(savedSettings);
+                         if (parsed.vozSeleccionada && vocesEspañol.find(v => v.name === parsed.vozSeleccionada)) {
+                             return parsed.vozSeleccionada;
+                         }
+                    } catch (e) {}
+                }
+
+                return vocesEspañol.length > 0 ? vocesEspañol[0].name : '';
+            });
         };
 
         cargarVoces();
@@ -113,18 +149,15 @@ export default function BingoGame() {
         }
     }, []);
 
-    // Guardar estado
+    // Guardar estado del juego (solo numeros)
     useEffect(() => {
         const estado = {
             numerosDisponibles,
             numerosSalidos,
-            modoJuego,
-            chistesHabilitados,
-            vozSeleccionada,
             ultimoNumero
         };
-        localStorage.setItem('estadoBingo', JSON.stringify(estado));
-    }, [numerosDisponibles, numerosSalidos, modoJuego, chistesHabilitados, vozSeleccionada, ultimoNumero]);
+        localStorage.setItem('estadoBingoGame', JSON.stringify(estado));
+    }, [numerosDisponibles, numerosSalidos, ultimoNumero]);
 
     const getLetra = useCallback((numero) => {
         for (const letra in BINGO_MAP) {
@@ -136,24 +169,24 @@ export default function BingoGame() {
     }, []);
 
     const iniciarJuegoNuevo = useCallback((modo = modoJuego, forzar = false) => {
-         if (!forzar && localStorage.getItem('estadoBingo')) {
-             try {
-                const estado = JSON.parse(localStorage.getItem('estadoBingo'));
-                if(estado.numerosDisponibles && estado.numerosSalidos) {
-                    // Ignorar estado vacío (recién inicializado)
-                    if (estado.numerosDisponibles.length === 0 && estado.numerosSalidos.length === 0) {
-                        // Continuar con inicialización normal
-                    } else {
-                        setNumerosDisponibles(estado.numerosDisponibles);
-                        setNumerosSalidos(estado.numerosSalidos);
-                        setModoJuego(estado.modoJuego || 'completo');
-                        setChistesHabilitados(estado.chistesHabilitados ?? true);
-                        if (estado.vozSeleccionada) setVozSeleccionada(estado.vozSeleccionada);
-                        setUltimoNumero(estado.ultimoNumero || null);
-                        return;
+         // Intentar restaurar juego previo si existe
+         if (!forzar) {
+             const savedGame = localStorage.getItem('estadoBingoGame');
+             if (savedGame) {
+                 try {
+                    const estado = JSON.parse(savedGame);
+                    if(estado.numerosDisponibles && estado.numerosSalidos) {
+                        if (estado.numerosDisponibles.length === 0 && estado.numerosSalidos.length === 0) {
+                             // Estado vacio, ignorar
+                        } else {
+                            setNumerosDisponibles(estado.numerosDisponibles);
+                            setNumerosSalidos(estado.numerosSalidos);
+                            setUltimoNumero(estado.ultimoNumero || null);
+                            return;
+                        }
                     }
-                }
-             } catch(e) { console.error(e); }
+                 } catch(e) { console.error(e); }
+             }
         }
 
         const letrasActivas = new Set();
@@ -322,20 +355,29 @@ export default function BingoGame() {
     };
 
     return (
-        <div className="flex w-full h-full bg-black text-white font-sans overflow-hidden">
+        <div className="flex flex-col md:flex-row w-full h-full bg-black text-white font-sans overflow-hidden">
              {/* Left Panel */}
-            <div className="w-full md:w-1/3 border-r border-gray-800 p-6 flex flex-col justify-between relative z-10 bg-black">
+            <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-gray-800 p-6 flex flex-col justify-between relative z-10 bg-black h-full">
                 <header className="flex justify-between items-start">
                      <div>
-                        <h1 className="text-5xl font-bold uppercase tracking-tighter mb-1">Bingo</h1>
-                        <p className="text-gray-500 text-sm uppercase tracking-widest">Moderno Panorámico</p>
+                        <h1 className="text-4xl md:text-5xl font-bold uppercase tracking-tighter mb-1">Bingo</h1>
+                        <p className="text-gray-500 text-xs md:text-sm uppercase tracking-widest">Moderno Panorámico</p>
                      </div>
-                     <button
-                        onClick={() => setShowSettings(!showSettings)}
-                        className="p-2 border border-gray-800 hover:bg-white hover:text-black transition-colors"
-                     >
-                        <Settings size={20} />
-                     </button>
+                     <div className="flex gap-2">
+                        {/* Mobile Board Toggle */}
+                        <button
+                            onClick={() => setShowBoard(!showBoard)}
+                            className="md:hidden p-2 border border-gray-800 hover:bg-white hover:text-black transition-colors"
+                        >
+                            {showBoard ? 'Ocultar Tablero' : 'Ver Tablero'}
+                        </button>
+                        <button
+                            onClick={() => setShowSettings(!showSettings)}
+                            className="p-2 border border-gray-800 hover:bg-white hover:text-black transition-colors"
+                        >
+                            <Settings size={20} />
+                        </button>
+                     </div>
                 </header>
 
                 <AnimatePresence>
@@ -456,31 +498,42 @@ export default function BingoGame() {
                 </div>
             </div>
 
-            {/* Right Panel - Board */}
-            <div className="w-full md:w-2/3 p-8 bg-black flex items-center justify-center overflow-hidden relative">
-                {/* Background Grid Lines for decoration */}
-                <div className="absolute inset-0 z-0 opacity-10 pointer-events-none"
-                     style={{
-                         backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
-                         backgroundSize: '40px 40px'
-                     }}
-                />
+            {/* Right Panel - Board (Desktop: Visible, Mobile: Toggled/Overlay) */}
+            <AnimatePresence>
+                {/* On desktop (md:block) always visible. On mobile, controlled by showBoard */}
+                <div className={`fixed inset-0 z-30 bg-black md:static md:w-2/3 md:block ${showBoard ? 'block' : 'hidden md:block'}`}>
+                     {/* Close button for mobile board */}
+                     <button
+                        onClick={() => setShowBoard(false)}
+                        className="absolute top-4 right-4 md:hidden z-50 p-2 bg-black border border-white rounded-full"
+                     >
+                        <X size={24} />
+                     </button>
 
-                 <div className="grid grid-cols-5 gap-3 w-full max-w-5xl h-full max-h-[90vh] z-10">
-                    {/* Headers */}
-                    {['B', 'I', 'N', 'G', 'O'].map((letra, i) => (
-                        <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            key={letra}
-                            className="text-6xl font-bold text-center border-b-2 border-white pb-4 text-white flex items-center justify-center"
-                        >
-                            {letra}
-                        </motion.div>
-                    ))}
+                    <div className="w-full h-full p-4 md:p-8 flex items-center justify-center overflow-hidden relative">
+                        {/* Background Grid Lines for decoration */}
+                        <div className="absolute inset-0 z-0 opacity-10 pointer-events-none"
+                            style={{
+                                backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
+                                backgroundSize: '40px 40px'
+                            }}
+                        />
 
-                     {/* Grid Rendering */}
+                        <div className="grid grid-cols-5 gap-2 md:gap-3 w-full max-w-5xl h-full max-h-[90vh] z-10 content-center">
+                            {/* Headers */}
+                            {['B', 'I', 'N', 'G', 'O'].map((letra, i) => (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    key={letra}
+                                    className="text-3xl md:text-6xl font-bold text-center border-b-2 border-white pb-2 md:pb-4 text-white flex items-center justify-center"
+                                >
+                                    {letra}
+                                </motion.div>
+                            ))}
+
+                            {/* Grid Rendering */}
                      {Array.from({ length: 15 }).map((_, rowIdx) => (
                         ['B', 'I', 'N', 'G', 'O'].map((letra, colIdx) => {
                             const range = BINGO_MAP[letra];
@@ -505,7 +558,7 @@ export default function BingoGame() {
                                     {ultimoNumero === num && (
                                         <motion.div
                                             layoutId="latest-indicator"
-                                            className="absolute inset-0 border-4 border-white pointer-events-none"
+                                            className="absolute inset-0 border-2 md:border-4 border-white pointer-events-none"
                                             initial={{ opacity: 0, scale: 1.2 }}
                                             animate={{ opacity: 1, scale: 1 }}
                                         />
@@ -514,8 +567,10 @@ export default function BingoGame() {
                             );
                         })
                      ))}
-                 </div>
-            </div>
+                        </div>
+                    </div>
+                </div>
+            </AnimatePresence>
         </div>
     );
 }
