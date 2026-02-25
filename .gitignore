@@ -1,1 +1,5 @@
-.DS_STORE
+node_modules
+.astro
+dist
+.DS_Store
+legacy/dsd
