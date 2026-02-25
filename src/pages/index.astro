@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BingoGame from '../components/BingoGame.jsx';
+---
+
+<Layout title="Bingo Moderno Panorámico">
+	<main class="w-full h-screen">
+		<BingoGame client:only="react" />
+	</main>
+</Layout>
